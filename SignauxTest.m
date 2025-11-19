@@ -4,15 +4,17 @@ clear; close all; clc;
 
 % 1.-Let w(t) be 1 if t is from a to b; 0 otherwhise.
 % Determine W(f)=FourrierTransform{w(t)}.
-% 
+% In the paper.
 % 2.-Let x(t) = cos(t) Determine X(f)=FourrierTransform{x(t)}.
+% In the paper.
 % 3.-Let y(t) = exp(-t) Determine Y(f)=FourrierTransform{y(t)}.
-% 
+% In the paper.
+
 % 4.- Find the expression of the signal h(t)= x(t) w(t) y(t)
 % Then compute Fourrier Transform
-% 
-% Write a Matlab code doing the 4 steps and plot on a same graph the spectra signals x(t) and h(t). Conclude
-% on your observations
+% In the paper and matlab
+
+% Graphing the spectra signals x(t) and h(t):
 
 % PARAMETERS
 a = 0; 
@@ -59,19 +61,17 @@ title('Spectra of x(t) and h(t)');
 legend('X(f)', 'H(f)');
 grid on;
 
-% Conclusion
-% Conclusion / Interpretation
+
+% Conclusion / some Interpretation
 % 
 % The spectrum X(f) consists of two impulses at
 % 
 % f= ±2π1 ​≈ ±0.159 Hz.
 % 
 % The signal h(t) multiplies x(t) by 2 proportions:
-
 % -an exponential decay, broadening the spectrum
 % -a rectangular window → creates sinc-like spreading, introducing many new frequency components.
-
-
+% Getting H(f) being a broader scale of X(f)
 
 
 %% Exam 1 Signaux Part 2
@@ -146,6 +146,76 @@ xlabel('Frequency (Hz)');
 ylabel('Magnitude'); grid on;
 
 
+% Conclusion / some Interpretation
+% 
+% With N=8, the spectrum is poorly resolved.
+% The cosine frequency is very small (0.159 Hz), far below the FFT frequency bins
+% (kFs/N=k⋅1.25Hz).
+% 
+% Therefore the DFT does not show two clear peaks as in the continuous-time Fourier transform.
 
+%% Exam 1 Signaux Part 3
+
+% Random noise, ACF and PSD Analysis
+% 
+% Lets characterize the follozing system, which for the input signal h(t) produces an output:
+% s(t)=h(t) * b(t)
+% assuming b(t) to be a zero-mean Gaussian white noise
+% 
+% 
+% 1.- Study the stationarity of the system`s output signal; s(t)
+% 
+% To check for stationarity requirements the mean value must not change through time (time independent)
+% Analysing expected value we get cero, a constant (time independent).
+% E[s(t)]=E[h(t)b(t)]=h(t)E[b(t)]=0
+% 
+% Now analysing ACF; looking for the dependancy of the ACF only in the delay, not dependancy with time
+% Rs​(t1​,t2​)=E[s(t1​)s(t2​)]=E[h(t1​)b(t1​)h(t2​)b(t2​)]
+% 
+% Rs​(t1​,t2​)=σb2​h(t1​)h(t2​)δ(t1​−t2​)
+% 
+% Rs​(t1​,t2​)=σb2​h2(t)δ(t1​−t2​)
+% 
+% The ACF depends only in time difference, except for the 
+% Rs​(t1​,t2​)=σb2​h2(t)δ(τ)
+% It depends explicitly on t (through h(t)), unless:  h(t)=constant
+% 
+% It is a noise process whose intensity varies in time because it is "shaped" by 
+% This is sometimes called nonstationary white noise with time-varying variance.
+% 
+% 
+% 2.- Can we compute its PSD; or not;
+% if yes, provide matlab code pls to show it.
+% 
+% 
+% For nonstationary processes, the PSD is NOT defined in the classical sense.
+
+
+clear; close all; clc;
+Fs = 2000;
+T = 1/Fs;
+t = 0:T:5;
+
+% deterministic envelope (example)
+h = cos(t) .* exp(-t);
+
+% white Gaussian noise
+b = randn(size(t));
+
+% output signal
+s = h .* b;
+
+% Time-varying PSD via spectrogram
+figure;
+spectrogram(s, 256, 200, 256, Fs, 'yaxis');
+title('Time-varying PSD of s(t) = h(t) b(t)');
+colorbar;
+
+% Plot s(t) and h(t)
+figure;
+subplot(2,1,1)
+plot(t, h); title('h(t) - envelope');
+subplot(2,1,2)
+plot(t, s); title('s(t) = h(t)b(t)');
 
 
