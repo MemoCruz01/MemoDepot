@@ -1,1 +1,101 @@
-#holis
+#
+%% Data fusion - Illustration (Kalman filter)  k = 0,1,2
+clear; clc; close all;
+
+% -------- Given data (from the table) --------
+A(:,:,1) = [0.5  0;
+            0    1];
+u(:,1)   = [ 8; 16];
+C(1,:)   = [1 1];
+y(1,1)   = 7;
+
+A(:,:,2) = [ 1 -1;
+             1  1];
+u(:,2)   = [ -6; -18];
+C(2,:)   = [1 1];
+y(2,1)   = 30;
+
+A(:,:,3) = [ 1 -1;
+             1  1];
+u(:,3)   = [ 32; -8];
+C(3,:)   = [1 1];
+y(3,1)   = -6;
+
+% Noise covariances (given)
+Gamma_alpha = eye(2);   % process noise covariance (2x2)
+Gamma_beta  = 1;        % measurement noise variance (scalar)
+
+% -------- Initial state / covariance unknown --------
+% Standard choice: very uncertain prior.
+x_hat_k_km1 = [0; 0];          % \hat{x}_{0|-1} (arbitrary mean)
+Gamma_k_km1 = 1e6*eye(2);      % very large uncertainty
+
+% Storage
+x_hat_k_k   = zeros(2,3);      % \hat{x}_{k|k}
+Gamma_k_k   = zeros(2,2,3);    % \Gamma_{k|k}
+x_hat_kp1_k = zeros(2,3);      % \hat{x}_{k+1|k}
+Gamma_kp1_k = zeros(2,2,3);    % \Gamma_{k+1|k}
+
+% -------- Kalman recursion --------
+for k = 1:3
+    % ---- CORRECTION ----
+    % innovation: \tilde{y}_k = y_k - C_k \hat{x}_{k|k-1}
+    y_tilde = y(k) - C(k,:)*x_hat_k_km1;
+
+    % innovation covariance: S_k = C_k Gamma_{k|k-1} C_k^T + Gamma_{beta}
+    S_k = C(k,:)*Gamma_k_km1*C(k,:)' + Gamma_beta;
+
+    % Kalman gain: K_k = Gamma_{k|k-1} C_k^T S_k^{-1}
+    K_k = (Gamma_k_km1*C(k,:)') / S_k;   % (2x1) / scalar
+
+    % corrected estimate: \hat{x}_{k|k} = \hat{x}_{k|k-1} + K_k \tilde{y}_k
+    x_hat = x_hat_k_km1 + K_k*y_tilde;
+
+    % corrected covariance: Gamma_{k|k} = (I - K_k C_k) Gamma_{k|k-1}
+    Gamma = (eye(2) - K_k*C(k,:)) * Gamma_k_km1;
+
+    x_hat_k_k(:,k)   = x_hat;
+    Gamma_k_k(:,:,k) = Gamma;
+
+    % ---- PREDICTION ---- (to k+1)
+    x_pred = A(:,:,k)*x_hat + u(:,k);
+    Gamma_pred = A(:,:,k)*Gamma*A(:,:,k)' + Gamma_alpha;
+
+    x_hat_kp1_k(:,k)   = x_pred;
+    Gamma_kp1_k(:,:,k) = Gamma_pred;
+
+    % feed into next iteration as \hat{x}_{k+1|k} and Gamma_{k+1|k}
+    x_hat_k_km1 = x_pred;
+    Gamma_k_km1 = Gamma_pred;
+end
+
+% -------- Plot: estimated states and 99% ellipses --------
+figure;
+hold on; grid on;
+xlabel('x_1'); ylabel('x_2'); title('Kalman filter estimates with 99% confidence ellipses');
+
+plot(x_hat_k_k(1,:), x_hat_k_k(2,:), 'o-', 'LineWidth', 1.5); % corrected states
+
+% 99% ellipse scaling for n=2: chi2inv(0.99,2) = 9.2103
+chi2_99_df2 = 9.2103;
+
+for k = 1:3
+    P = Gamma_k_k(:,:,k);
+    mu = x_hat_k_k(:,k);
+    drawEllipse(mu, P, chi2_99_df2);
+    text(mu(1), mu(2), sprintf(' k=%d',k-1), 'VerticalAlignment','bottom');
+end
+
+axis equal;
+hold off;
+
+% -------- Helper function (ellipse) --------
+function drawEllipse(mu, P, chi2val)
+    % Draw ellipse: (x-mu)' P^{-1} (x-mu) = chi2val
+    [V,D] = eig(P);
+    t = linspace(0, 2*pi, 200);
+    circle = [cos(t); sin(t)];
+    radii = sqrt(chi2val) * sqrt(diag(D)); % sqrt(chi2)*sqrt(lambda_i)
+    ell = V * (radii .* circle);
+    plot(mu(1)+ell(1,:), mu(2)+ell(2,:), '-', 'LineWidth', 1.0);
+end
